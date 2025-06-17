@@ -1,0 +1,23 @@
+{
+  "name": "open-weather",
+  "version": "1.0.0",
+  "author": "Mark Tripoli <mark@picogrid.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "setup": "ts-node setup-integration.ts",
+    "setup:js": "node create-integration.js",
+    "delete-integration": "ts-node setup-integration.ts --delete"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
+  }
+}

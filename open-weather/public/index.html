@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legion Weather Service Integration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2563eb;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+        .features {
+            list-style: none;
+            padding: 0;
+            margin: 2rem 0;
+        }
+        .features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .features li:before {
+            content: "✓ ";
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .button {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .button:hover {
+            background: #1d4ed8;
+        }
+        .status {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 4px;
+            background: #f3f4f6;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .org-list {
+            margin: 2rem 0;
+        }
+        .org-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+        }
+        .org-item.active {
+            background: #e0f2fe;
+            border-color: #2563eb;
+        }
+        .connect-form {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .demo-note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌦️ Legion Weather Service</h1>
+        <p class="subtitle">Real-time weather monitoring for your Legion organization</p>
+        
+        <div id="content">
+            <div class="features">
+                <h3>Features</h3>
+                <ul class="features">
+                    <li>Real-time weather data from OpenWeather API</li>
+                    <li>Organization-specific weather preferences</li>
+                    <li>Secure OAuth 2.0 integration with Legion</li>
+                    <li>Automatic token refresh</li>
+                    <li>Weather alerts and notifications (coming soon)</li>
+                </ul>
+            </div>
+
+            <div class="demo-note">
+                <strong>Demo Mode:</strong> For testing purposes, you can use a demo organization ID or enter your real Legion organization ID below.
+            </div>
+
+            <div class="connect-form">
+                <h3>Connect Your Organization</h3>
+                <div class="form-group">
+                    <label for="orgId">Organization ID:</label>
+                    <input type="text" id="orgId" placeholder="e.g., org-123 or use demo-org-1" value="">
+                </div>
+                <button class="button" onclick="connectOrganization()">Connect to Legion</button>
+                
+                <p style="margin-top: 1rem; color: #6b7280;">
+                    <small>Not sure about your organization ID? You can find it in the Legion platform settings.</small>
+                </p>
+            </div>
+
+            <div id="statusSection" style="display: none;">
+                <h3>Active Organizations</h3>
+                <div id="orgList" class="org-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check URL parameters for OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const orgId = urlParams.get('orgId');
+        const error = urlParams.get('error');
+        
+        // Load active organizations on page load
+        window.onload = function() {
+            if (success && orgId) {
+                showSuccessMessage(orgId);
+            } else if (error) {
+                showErrorMessage(error, urlParams.get('error_description'));
+            }
+            checkStatus();
+        };
+        
+        async function connectOrganization() {
+            const orgIdInput = document.getElementById('orgId').value.trim();
+            
+            if (!orgIdInput) {
+                alert('Please enter an organization ID');
+                return;
+            }
+            
+            // Use the /connect endpoint with org_id parameter
+            window.location.href = `/connect?org_id=${encodeURIComponent(orgIdInput)}`;
+        }
+        
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                if (data.active_organizations > 0) {
+                    document.getElementById('statusSection').style.display = 'block';
+                    const orgListDiv = document.getElementById('orgList');
+                    
+                    orgListDiv.innerHTML = data.organizations.map(org => `
+                        <div class="org-item ${org.is_running ? 'active' : ''}">
+                            <div>
+                                <strong>${org.organization_id}</strong>
+                                <br>
+                                <small>Connected: ${new Date(org.activated_at).toLocaleString()}</small>
+                            </div>
+                            <div>
+                                <button class="button" onclick="testWeather('${org.organization_id}')">
+                                    Test Weather
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('Failed to check status:', err);
+            }
+        }
+        
+        async function testWeather(orgId) {
+            try {
+                const response = await fetch(`/api/weather/${orgId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Weather in ${data.location}:\n
+Temperature: ${data.temperature}°C
+Description: ${data.description}
+Humidity: ${data.humidity}%
+Wind Speed: ${data.wind_speed} m/s`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Failed to fetch weather: ' + err.message);
+            }
+        }
+        
+        function showSuccessMessage(orgId) {
+            const content = document.getElementById('content');
+            const successDiv = document.createElement('div');
+            successDiv.className = 'status success';
+            successDiv.innerHTML = `
+                <h3>✓ Connection Successful!</h3>
+                <p>Legion Weather Service is now active for organization: <strong>${orgId}</strong></p>
+                <p>The integration will automatically refresh tokens and monitor weather data.</p>
+            `;
+            content.insertBefore(successDiv, content.firstChild);
+            
+            // Refresh status after a moment
+            setTimeout(checkStatus, 1000);
+        }
+        
+        function showErrorMessage(error, description) {
+            const content = document.getElementById('content');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'status error';
+            errorDiv.innerHTML = `
+                <h3>Connection Failed</h3>
+                <p>Error: ${error}</p>
+                ${description ? `<p>${description}</p>` : ''}
+            `;
+            content.insertBefore(errorDiv, content.firstChild);
+        }
+        
+        // Refresh status every 30 seconds
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>

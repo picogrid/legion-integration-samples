@@ -1,0 +1,22 @@
+{
+  "name": "Legion Weather Service",
+  "description": "Real-time weather monitoring and alerts for your organization. Tracks weather conditions across US cities and generates automatic alerts for severe weather events.",
+  "type": "software",
+  "version": "1.0.0",
+  "image_url": "https://example.com/weather-service.png",
+  "public": false,
+  "capabilities": ["entity", "feeds"],
+  "oauth_config": {
+    "scopes": [
+      "organizations:read",
+      "entities:read",
+      "entities:write",
+      "feeds:read",
+      "feeds:write"
+    ],
+    "redirect_urls": [
+      "http://localhost:3001/oauth/callback",
+      "https://your-integration.com/oauth/callback"
+    ]
+  }
+}
