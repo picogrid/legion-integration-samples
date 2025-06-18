@@ -10,6 +10,11 @@ This demo shows how to create and install a Legion integration using simple HTML
 - JWT token parsing for organization ID extraction
 - Real weather data from OpenWeather API
 - Active organization status tracking
+- **Weather Station Management in Legion**:
+  - Create weather station entities with geographic locations
+  - Update weather data and push to Legion feeds
+  - View real-time weather for any city
+  - Delete weather stations when no longer needed
 
 ## Prerequisites
 
@@ -57,6 +62,22 @@ The integration also supports OAuth flows initiated from external sources (like 
 - The callback handler automatically extracts the organization ID from the JWT token
 - No prior state is required - the integration handles external OAuth callbacks gracefully
 
+### Weather Station Management
+
+After connecting your organization:
+
+1. **Click "Manage Stations"**: Opens the weather station management interface
+2. **Add Weather Station**: Enter a city name to create a weather station entity in Legion
+   - The integration will:
+     - Fetch city coordinates from OpenWeather API
+     - Create a SENSOR entity in Legion with geographic location (ECEF coordinates)
+     - Set up a feed definition for weather data
+3. **Update Weather**: Fetches current weather and pushes data to Legion feeds
+   - Temperature, humidity, pressure, wind speed, etc.
+   - Data is stored as time-series in Legion
+4. **View Data**: Shows current weather for the station's city
+5. **Delete Station**: Removes the weather station entity from Legion
+
 ## Project Structure
 
 ```
@@ -72,16 +93,26 @@ open-weather/
 
 ## API Endpoints
 
+### OAuth & Connection
 - `GET /` - Demo HTML interface
 - `GET /connect?org_id=X` - Initiate OAuth flow for organization
 - `GET /oauth/callback` - OAuth callback handler (supports both internal and external flows)
 - `GET /api/organizations` - List available organizations (mock data)
 - `GET /api/integration-status/:orgId` - Check if integration is installed
 - `GET /api/oauth/initiate/:orgId` - Start OAuth flow (API endpoint)
-- `GET /api/weather/:orgId?city=CityName` - Get real weather data from OpenWeather API
 - `POST /oauth/disconnect` - Disconnect an organization
 - `GET /status` - View all connected organizations
 - `GET /health` - Health check
+
+### Weather Data
+- `GET /api/weather/:orgId?city=CityName` - Get real weather data from OpenWeather API
+
+### Weather Station Management (Legion Entities)
+- `GET /api/weather-stations/:orgId` - List all weather stations for an organization
+- `POST /api/weather-stations/:orgId` - Create a new weather station entity
+  - Body: `{ "city": "New York" }`
+- `POST /api/weather-stations/:orgId/:stationId/update` - Update weather data and push to Legion feeds
+- `DELETE /api/weather-stations/:orgId/:stationId` - Delete a weather station entity
 
 ## OAuth Flow Details
 
