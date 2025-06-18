@@ -31,8 +31,8 @@ This demo shows how to create and install a Legion integration using simple HTML
    
    This will:
    - Create the integration in Legion
-   - Generate an OAuth client
-   - Update your `.env` file with the client ID
+   - Generate an OAuth client with credentials
+   - Update your `.env` file with the client ID and secret (if confidential client)
 
 3. Start the server:
    ```bash
@@ -66,7 +66,7 @@ open-weather/
 ├── public/
 │   └── index.html      # Demo HTML interface
 ├── manifest.json       # Integration manifest
-├── create-integration.ts # Setup script
+├── setup-integration.ts # Setup script
 └── .env               # Configuration (created by setup)
 ```
 

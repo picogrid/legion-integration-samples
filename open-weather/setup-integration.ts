@@ -46,6 +46,7 @@ interface Integration {
     id: string;
     name: string;
     oauth_client?: OAuthClient;
+    oauth_config?: OAuthConfigResponse;
 }
 
 interface Manifest {
@@ -447,11 +448,36 @@ async function main(): Promise<void> {
             console.log(`  ID: ${integration.id}`);
             console.log(`  Name: ${integration.name}`);
 
-            // Check if OAuth client exists
-            let clientId = integration.oauth_client?.client_id;
-            let clientSecret = integration.oauth_client?.client_secret;
+            // Check if OAuth client exists - first check the new oauth_config field
+            let clientId = integration.oauth_config?.client_id || integration.oauth_client?.client_id;
+            let clientSecret = integration.oauth_config?.client_secret || integration.oauth_client?.client_secret;
             
-            if (!clientId) {
+            // If we got OAuth config from the integration creation response, log it
+            if (integration.oauth_config && clientId) {
+                console.log(`\n✅ OAuth client created with integration: ${clientId}`);
+                
+                if (clientSecret) {
+                    console.log(`✅ OAuth client secret received: ${clientSecret.substring(0, 8)}...`);
+                    console.log(`   This is a confidential client - secret will be saved to .env`);
+                } else {
+                    console.log(`ℹ️  No client secret in response - this is a public OAuth client`);
+                    console.log(`   Public clients don't require a secret for the authorization code flow`);
+                }
+                
+                // Log the full OAuth config details
+                console.log('\nOAuth Configuration Details:');
+                console.log(`  Config ID: ${integration.oauth_config.id || 'N/A'}`);
+                console.log(`  Integration ID: ${integration.oauth_config.integration_id || integration.id}`);
+                console.log(`  Client ID: ${integration.oauth_config.client_id}`);
+                console.log(`  Client Type: ${clientSecret ? 'Confidential' : 'Public'}`);
+                console.log(`  Auth Flow Type: ${integration.oauth_config.auth_flow_type || 'N/A'}`);
+                console.log(`  Requested Scopes: ${integration.oauth_config.requested_scopes?.join(', ') || 'N/A'}`);
+                
+                if (clientSecret) {
+                    console.log(`  Client Secret: ${clientSecret.substring(0, 12)}...${clientSecret.substring(clientSecret.length - 4)}`);
+                }
+            } else if (!clientId) {
+                // Only check for OAuth client via separate API call if we don't have it from creation response
                 console.log('\n🔍 Checking for OAuth client...');
                 try {
                     const clientResponse = await axios.get<OAuthConfigResponse>(
