@@ -366,6 +366,7 @@ app.get('/oauth/callback', async (req: express.Request, res: express.Response): 
  */
 app.get('/api/weather/:orgId', async (req: express.Request, res: express.Response): Promise<void> => {
     const { orgId } = req.params;
+    const { city = 'San Francisco', units = 'metric' } = req.query;
     const orgData = activeOrganizations.get(orgId);
     
     if (!orgData || !orgData.tokens) {
@@ -373,24 +374,54 @@ app.get('/api/weather/:orgId', async (req: express.Request, res: express.Respons
         return;
     }
     
+    if (!config.OPENWEATHER_API_KEY) {
+        res.status(500).json({ error: 'OpenWeather API key not configured' });
+        return;
+    }
+    
     try {
-        // For demo purposes, return mock weather data
-        // In a real implementation, this would:
-        // 1. Use the Legion access token to get user preferences
-        // 2. Call OpenWeather API with the location
-        const mockWeatherData = {
-            location: 'San Francisco, CA',
-            temperature: 18,
-            description: 'Partly cloudy',
-            humidity: 65,
-            wind_speed: 3.5,
+        // Debug log
+        console.log('Weather request for city:', city, 'units:', units);
+        
+        // Call OpenWeather API
+        const weatherResponse = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
+            params: {
+                q: city as string,
+                appid: config.OPENWEATHER_API_KEY,
+                units: units as string
+            }
+        });
+        
+        const data = weatherResponse.data;
+        
+        // Format the response
+        const weatherData = {
+            location: `${data.name}, ${data.sys.country}`,
+            temperature: Math.round(data.main.temp),
+            description: data.weather[0].description,
+            humidity: data.main.humidity,
+            wind_speed: data.wind.speed,
+            feels_like: Math.round(data.main.feels_like),
+            temp_min: Math.round(data.main.temp_min),
+            temp_max: Math.round(data.main.temp_max),
+            pressure: data.main.pressure,
+            icon: data.weather[0].icon,
             timestamp: new Date().toISOString()
         };
         
-        res.json(mockWeatherData);
-    } catch (error) {
-        console.error('Failed to get weather:', error);
-        res.status(500).json({ error: 'Failed to fetch weather data' });
+        res.json(weatherData);
+    } catch (error: any) {
+        console.error('Failed to get weather:', error.response?.data || error.message);
+        console.error('Request URL:', error.config?.url);
+        console.error('Request params:', error.config?.params);
+        
+        if (error.response?.status === 404) {
+            res.status(404).json({ error: 'City not found' });
+        } else if (error.response?.status === 401) {
+            res.status(500).json({ error: 'Invalid OpenWeather API key' });
+        } else {
+            res.status(500).json({ error: 'Failed to fetch weather data' });
+        }
     }
 });
 
@@ -454,6 +485,12 @@ app.listen(config.PORT, () => {
     
     if (!config.CLIENT_ID) {
         console.log('\n⚠️  Warning: CLIENT_ID not set. Run "yarn setup" to configure the integration.');
+    }
+    
+    if (!config.OPENWEATHER_API_KEY) {
+        console.log('\n⚠️  Warning: OPENWEATHER_API_KEY not set. Please add it to your .env file.');
+    } else {
+        console.log(`   OpenWeather API: Configured (key: ${config.OPENWEATHER_API_KEY.substring(0, 8)}...)`);
     }
 });
 

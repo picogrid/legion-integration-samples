@@ -8,7 +8,7 @@ This demo shows how to create and install a Legion integration using simple HTML
 - Simple HTML interface for testing
 - Support for external OAuth initiation (e.g., from Legion Map UI)
 - JWT token parsing for organization ID extraction
-- Mock weather data endpoint
+- Real weather data from OpenWeather API
 - Active organization status tracking
 
 ## Prerequisites
@@ -78,7 +78,7 @@ open-weather/
 - `GET /api/organizations` - List available organizations (mock data)
 - `GET /api/integration-status/:orgId` - Check if integration is installed
 - `GET /api/oauth/initiate/:orgId` - Start OAuth flow (API endpoint)
-- `GET /api/weather/:orgId` - Get weather data (mock)
+- `GET /api/weather/:orgId?city=CityName` - Get real weather data from OpenWeather API
 - `POST /oauth/disconnect` - Disconnect an organization
 - `GET /status` - View all connected organizations
 - `GET /health` - Health check
@@ -103,7 +103,7 @@ The integration supports two OAuth patterns:
 
 - Tokens are stored in memory (lost on restart)
 - For demo purposes, mock organization data is provided
-- Weather data is mocked - integrate with OpenWeather API for production
+- Weather data is fetched from OpenWeather API (requires API key in .env)
 - Token exchange includes fallback logic for different environments
 - Client secret is optional for public OAuth clients
 
@@ -115,7 +115,7 @@ LEGION_API_URL=http://localhost:9876
 CLIENT_ID=                    # Set by setup script
 CLIENT_SECRET=                # Optional for public clients
 REDIRECT_URI=http://localhost:3001/oauth/callback
-OPENWEATHER_API_KEY=          # For real weather data
+OPENWEATHER_API_KEY=          # Required - Get from https://openweathermap.org/api
 ```
 
 ## Troubleshooting

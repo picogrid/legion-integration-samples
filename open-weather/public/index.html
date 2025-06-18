@@ -215,16 +215,21 @@
         }
         
         async function testWeather(orgId) {
+            const city = prompt('Enter city name:', 'San Francisco');
+            if (!city) return;
+            
             try {
-                const response = await fetch(`/api/weather/${orgId}`);
+                const response = await fetch(`/api/weather/${orgId}?city=${encodeURIComponent(city)}`);
                 const data = await response.json();
                 
                 if (response.ok) {
                     alert(`Weather in ${data.location}:\n
-Temperature: ${data.temperature}°C
+Temperature: ${data.temperature}°C (feels like ${data.feels_like}°C)
 Description: ${data.description}
 Humidity: ${data.humidity}%
-Wind Speed: ${data.wind_speed} m/s`);
+Wind Speed: ${data.wind_speed} m/s
+Min/Max: ${data.temp_min}°C / ${data.temp_max}°C
+Pressure: ${data.pressure} hPa`);
                 } else {
                     alert(`Error: ${data.error}`);
                 }
