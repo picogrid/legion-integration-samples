@@ -113,6 +113,50 @@
             border-radius: 4px;
             margin-bottom: 2rem;
         }
+        .weather-stations {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+        .station-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+        }
+        .station-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .button-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .button-secondary {
+            background: #6b7280;
+        }
+        .button-secondary:hover {
+            background: #4b5563;
+        }
+        .button-danger {
+            background: #ef4444;
+        }
+        .button-danger:hover {
+            background: #dc2626;
+        }
+        .add-station-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .add-station-form input {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -152,6 +196,17 @@
             <div id="statusSection" style="display: none;">
                 <h3>Active Organizations</h3>
                 <div id="orgList" class="org-list"></div>
+                
+                <div id="weatherStationsSection" style="display: none;">
+                    <h3>Weather Stations</h3>
+                    <div class="weather-stations">
+                        <div class="add-station-form">
+                            <input type="text" id="newStationCity" placeholder="Enter city name (e.g., New York)">
+                            <button class="button button-small" onclick="addWeatherStation()">Add Weather Station</button>
+                        </div>
+                        <div id="stationsList"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -202,8 +257,8 @@
                                 <small>Connected: ${new Date(org.activated_at).toLocaleString()}</small>
                             </div>
                             <div>
-                                <button class="button" onclick="testWeather('${org.organization_id}')">
-                                    Test Weather
+                                <button class="button" onclick="selectOrganization('${org.organization_id}')">
+                                    Manage Stations
                                 </button>
                             </div>
                         </div>
@@ -215,16 +270,21 @@
         }
         
         async function testWeather(orgId) {
+            const city = prompt('Enter city name:', 'San Francisco');
+            if (!city) return;
+            
             try {
-                const response = await fetch(`/api/weather/${orgId}`);
+                const response = await fetch(`/api/weather/${orgId}?city=${encodeURIComponent(city)}`);
                 const data = await response.json();
                 
                 if (response.ok) {
                     alert(`Weather in ${data.location}:\n
-Temperature: ${data.temperature}°C
+Temperature: ${data.temperature}°C (feels like ${data.feels_like}°C)
 Description: ${data.description}
 Humidity: ${data.humidity}%
-Wind Speed: ${data.wind_speed} m/s`);
+Wind Speed: ${data.wind_speed} m/s
+Min/Max: ${data.temp_min}°C / ${data.temp_max}°C
+Pressure: ${data.pressure} hPa`);
                 } else {
                     alert(`Error: ${data.error}`);
                 }
@@ -262,6 +322,163 @@ Wind Speed: ${data.wind_speed} m/s`);
         
         // Refresh status every 30 seconds
         setInterval(checkStatus, 30000);
+        
+        // Current selected organization
+        let currentOrgId = null;
+        
+        // Select organization for weather station management
+        async function selectOrganization(orgId) {
+            currentOrgId = orgId;
+            document.getElementById('weatherStationsSection').style.display = 'block';
+            await loadWeatherStations();
+        }
+        
+        // Load weather stations for current organization
+        async function loadWeatherStations() {
+            if (!currentOrgId) return;
+            
+            try {
+                const response = await fetch(`/api/weather-stations/${currentOrgId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const stations = data.stations || [];
+                
+                const stationsList = document.getElementById('stationsList');
+                if (stations.length === 0) {
+                    stationsList.innerHTML = '<p style="color: #6b7280;">No weather stations yet. Add one above!</p>';
+                } else {
+                    stationsList.innerHTML = stations.map(station => `
+                        <div class="station-item">
+                            <div>
+                                <strong>${station.name}</strong>
+                                <br>
+                                <small>ID: ${station.id}</small>
+                                ${station.metadata ? `<br><small>Location: ${station.metadata.lat.toFixed(4)}, ${station.metadata.lon.toFixed(4)}</small>` : ''}
+                            </div>
+                            <div class="station-actions">
+                                <button class="button button-small" onclick="updateWeatherData('${station.id}')">
+                                    Update Weather
+                                </button>
+                                <button class="button button-small button-secondary" onclick="viewWeatherData('${station.id}', '${station.metadata?.city || 'Unknown'}')">
+                                    View Data
+                                </button>
+                                <button class="button button-small button-danger" onclick="deleteWeatherStation('${station.id}')">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('Failed to load weather stations:', err);
+                alert('Failed to load weather stations: ' + err.message);
+            }
+        }
+        
+        // Add a new weather station
+        async function addWeatherStation() {
+            const cityInput = document.getElementById('newStationCity');
+            const city = cityInput.value.trim();
+            
+            if (!city) {
+                alert('Please enter a city name');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/weather-stations/${currentOrgId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ city })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Weather station created for ${data.station.metadata.city}!`);
+                    cityInput.value = '';
+                    await loadWeatherStations();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Failed to create weather station: ' + err.message);
+            }
+        }
+        
+        // Update weather data for a station
+        async function updateWeatherData(stationId) {
+            try {
+                const response = await fetch(`/api/weather-stations/${currentOrgId}/${stationId}/update`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Weather updated!\n\nTemperature: ${data.data.temperature}°C\nDescription: ${data.data.weather_description}\nHumidity: ${data.data.humidity}%\nWind: ${data.data.wind_speed} m/s`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Failed to update weather data: ' + err.message);
+            }
+        }
+        
+        // View weather data for a station
+        async function viewWeatherData(stationId, cityName) {
+            const city = prompt('Enter city name:', cityName);
+            if (!city) return;
+            
+            try {
+                const response = await fetch(`/api/weather/${currentOrgId}?city=${encodeURIComponent(city)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Weather in ${data.location}:\n
+Temperature: ${data.temperature}°C (feels like ${data.feels_like}°C)
+Description: ${data.description}
+Humidity: ${data.humidity}%
+Wind Speed: ${data.wind_speed} m/s
+Min/Max: ${data.temp_min}°C / ${data.temp_max}°C
+Pressure: ${data.pressure} hPa`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Failed to fetch weather: ' + err.message);
+            }
+        }
+        
+        // Delete a weather station
+        async function deleteWeatherStation(stationId) {
+            if (!confirm('Are you sure you want to delete this weather station?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/weather-stations/${currentOrgId}/${stationId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Weather station deleted successfully');
+                    await loadWeatherStations();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Failed to delete weather station: ' + err.message);
+            }
+        }
     </script>
 </body>
 </html>
